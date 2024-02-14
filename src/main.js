@@ -1,79 +1,110 @@
-import axios from 'axios';
 import iziToast from 'izitoast';
 import 'izitoast/dist/css/iziToast.min.css';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 
-// Ваш унікальний ключ доступу до Pixabay API
-const apiKey = '42208062-89bae71b6ac9d6683cff7159b';
+const refs = {
+  form: document.querySelector('.form'),
+  gallery: document.querySelector('.gallery'),
+  loader: document.querySelector('.loader'),
+};
+let gallery = new SimpleLightbox('.gallery a');
 
-// Опис інших змінних та ініціалізація SimpleLightbox
+refs.form.addEventListener('submit', onFormSubmit);
 
-// Опис функції для виконання HTTP-запиту та обробки результатів
-
-// Обробка події натискання на кнопку пошуку
-document
-  .getElementById('search-form')
-  .addEventListener('submit', function (event) {
-    event.preventDefault();
-    const searchTerm = document.getElementById('search-input').value.trim();
-
-    if (searchTerm === '') {
-      iziToast.error({ message: 'Please enter a search term.' });
-      return;
-    }
-
-    // Очистка галереї перед новим запитом
-    document.getElementById('gallery-container').innerHTML = '';
-
-    // Виклик функції для виконання HTTP-запиту та отримання результатів
-  });
-
-function searchImages(searchTerm) {
-  const apiUrl = `https://pixabay.com/api/?key=${apiKey}&q=${searchTerm}&image_type=photo&orientation=horizontal&safesearch=true`;
-
-  // Виконання HTTP-запиту
-  axios
-    .get(apiUrl)
-    .then(response => {
-      const images = response.data.hits;
-
-      if (images.length === 0) {
-        iziToast.info({
-          message:
-            'Sorry, there are no images matching your search query. Please try again.',
-        });
-      } else {
-        // Відображення зображень у галереї
-        displayImages(images);
+function onFormSubmit(e) {
+  e.preventDefault();
+  const search = e.target.elements.search.value.trim();
+  refs.loader.classList.remove('hidden');
+  refs.gallery.innerHTML = '';
+  getImagesByType(search)
+    .then(data => {
+      if (data.totalHits === 0) {
+        return showError(message);
       }
+      const markup = galleryTemplate(data.hits);
+      refs.gallery.innerHTML = markup;
+      gallery.refresh();
     })
     .catch(error => {
-      iziToast.error({
-        message: 'Error fetching images. Please try again later.',
-      });
+      showError(error);
+    })
+    .finally(() => {
+      refs.loader.classList.add('hidden');
+    });
+
+  refs.form.reset();
+}
+
+function getImagesByType(query) {
+  const URL = 'https://pixabay.com/api/';
+  const API_KEY = '42208062-89bae71b6ac9d6683cff7159b';
+  const PARAMS = new URLSearchParams({
+    key: API_KEY,
+    q: query,
+    image_type: 'photo',
+    orientation: 'horizontal',
+    safesearch: true,
+  });
+
+  const url = `${URL}?${PARAMS}`;
+
+  return fetch(url)
+    .then(res => res.json())
+    .catch(error => {
+      showError(error);
     });
 }
 
-function displayImages(images) {
-  const galleryContainer = document.getElementById('gallery-container');
-  const lightbox = new SimpleLightbox();
+function imageTemplate(data) {
+  return `<li class="gallery-card">
+        <a href="${data.largeImageURL}"
+          ><img
+            class="gallery-image"
+            src="${data.webformatURL}"
+            alt="${data.tags}"
+            title=""
+          />
+        </a>
+        <div class="gallery-card-items">
+          <p class="gallery-card-info">
+            Likes
+            <span class="gallery-card-data">${data.likes}</span>
+          </p>
 
-  images.forEach(image => {
-    // Створення HTML-розмітки для кожної картки зображення
-    const cardHTML = `<div class="gallery-card">
-                        <a href="${image.largeImageURL}" data-lightbox="gallery">
-                          <img src="${image.webformatURL}" alt="${image.tags}">
-                        </a>
-                        <p>Likes: ${image.likes}</p>
-                        <p>Views: ${image.views}</p>
-                        <p>Downloads: ${image.downloads}</p>
-                      </div>`;
+          <p class="gallery-card-info">
+            Views
+            <span class="gallery-card-data">${data.views}</span>
+          </p>
 
-    // Додавання картки до галереї
-    galleryContainer.innerHTML += cardHTML;
+          <p class="gallery-card-info">
+            Comments
+            <span class="gallery-card-data">${data.comments}</span>
+          </p>
+
+          <p class="gallery-card-info">
+            Downloads
+            <span class="gallery-card-data">${data.downloads}</span>
+          </p>
+        </div>
+      </li>`;
+}
+function galleryTemplate(data) {
+  return data.map(imageTemplate).join('');
+}
+
+function showError(message) {
+  iziToast.error({
+    message:
+      'Sorry, there are no images matching <br/> your search query. Please try again!',
+    position: 'topRight',
+    messageColor: '#ffffff',
+    messageSize: '16px',
+    backgroundColor: '#ef4040',
+    iconColor: '#ffffff',
+    iconUrl: errorIcon,
+    timeout: 5000,
+    close: false,
+    closeOnEscape: true,
   });
-
-  // Оновлення SimpleLightbox
-  lightbox.refresh();
 }

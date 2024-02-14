@@ -2,6 +2,8 @@ import iziToast from 'izitoast';
 import 'izitoast/dist/css/iziToast.min.css';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
+import errorIcon from './img/octagon.svg';
+import closeIcon from './img/close.svg';
 
 const refs = {
   form: document.querySelector('.form'),
@@ -14,10 +16,10 @@ refs.form.addEventListener('submit', onFormSubmit);
 
 function onFormSubmit(e) {
   e.preventDefault();
-  const search = e.target.elements.search.value.trim();
+  const input = e.target.elements.input.value.trim();
   refs.loader.classList.remove('hidden');
   refs.gallery.innerHTML = '';
-  getImagesByType(search)
+  getImagesByType(input)
     .then(data => {
       if (data.totalHits === 0) {
         return showError(message);
@@ -106,5 +108,13 @@ function showError(message) {
     timeout: 5000,
     close: false,
     closeOnEscape: true,
+    buttons: [
+      [
+        `<button type="button" style="background-color: transparent" ><img src=${closeIcon}></button>`,
+        function (instance, toast) {
+          instance.hide({ transitionOut: 'fadeOut' }, toast);
+        },
+      ],
+    ],
   });
 }
